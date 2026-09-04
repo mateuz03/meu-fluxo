@@ -10,33 +10,91 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CartoesRouteImport } from './routes/cartoes'
+import { Route as ContasRouteImport } from './routes/contas'
+import { Route as MetasRouteImport } from './routes/metas'
+import { Route as OrcamentosRouteImport } from './routes/orcamentos'
+import { Route as TransacoesRouteImport } from './routes/transacoes'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CartoesRoute = CartoesRouteImport.update({
+  id: '/cartoes',
+  path: '/cartoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContasRoute = ContasRouteImport.update({
+  id: '/contas',
+  path: '/contas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetasRoute = MetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrcamentosRoute = OrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransacoesRoute = TransacoesRouteImport.update({
+  id: '/transacoes',
+  path: '/transacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cartoes': typeof CartoesRoute
+  '/contas': typeof ContasRoute
+  '/metas': typeof MetasRoute
+  '/orcamentos': typeof OrcamentosRoute
+  '/transacoes': typeof TransacoesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cartoes': typeof CartoesRoute
+  '/contas': typeof ContasRoute
+  '/metas': typeof MetasRoute
+  '/orcamentos': typeof OrcamentosRoute
+  '/transacoes': typeof TransacoesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cartoes': typeof CartoesRoute
+  '/contas': typeof ContasRoute
+  '/metas': typeof MetasRoute
+  '/orcamentos': typeof OrcamentosRoute
+  '/transacoes': typeof TransacoesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/cartoes' | '/contas' | '/metas' | '/orcamentos' | '/transacoes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/cartoes' | '/contas' | '/metas' | '/orcamentos' | '/transacoes'
+  id:
+    | '__root__'
+    | '/'
+    | '/cartoes'
+    | '/contas'
+    | '/metas'
+    | '/orcamentos'
+    | '/transacoes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CartoesRoute: typeof CartoesRoute
+  ContasRoute: typeof ContasRoute
+  MetasRoute: typeof MetasRoute
+  OrcamentosRoute: typeof OrcamentosRoute
+  TransacoesRoute: typeof TransacoesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +106,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cartoes': {
+      id: '/cartoes'
+      path: '/cartoes'
+      fullPath: '/cartoes'
+      preLoaderRoute: typeof CartoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contas': {
+      id: '/contas'
+      path: '/contas'
+      fullPath: '/contas'
+      preLoaderRoute: typeof ContasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/metas': {
+      id: '/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof MetasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orcamentos': {
+      id: '/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/orcamentos'
+      preLoaderRoute: typeof OrcamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transacoes': {
+      id: '/transacoes'
+      path: '/transacoes'
+      fullPath: '/transacoes'
+      preLoaderRoute: typeof TransacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CartoesRoute: CartoesRoute,
+  ContasRoute: ContasRoute,
+  MetasRoute: MetasRoute,
+  OrcamentosRoute: OrcamentosRoute,
+  TransacoesRoute: TransacoesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
