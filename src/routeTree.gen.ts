@@ -10,10 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as CartoesRouteImport } from './routes/cartoes'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContasRouteImport } from './routes/contas'
+import { Route as DividasRouteImport } from './routes/dividas'
+import { Route as InvestimentosRouteImport } from './routes/investimentos'
 import { Route as MetasRouteImport } from './routes/metas'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
+import { Route as PatrimonioRouteImport } from './routes/patrimonio'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as TransacoesRouteImport } from './routes/transacoes'
 
 const IndexRoute = IndexRouteImport.update({
@@ -21,14 +27,34 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgendaRoute = AgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartoesRoute = CartoesRouteImport.update({
   id: '/cartoes',
   path: '/cartoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContasRoute = ContasRouteImport.update({
   id: '/contas',
   path: '/contas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DividasRoute = DividasRouteImport.update({
+  id: '/dividas',
+  path: '/dividas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestimentosRoute = InvestimentosRouteImport.update({
+  id: '/investimentos',
+  path: '/investimentos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MetasRoute = MetasRouteImport.update({
@@ -41,6 +67,16 @@ const OrcamentosRoute = OrcamentosRouteImport.update({
   path: '/orcamentos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PatrimonioRoute = PatrimonioRouteImport.update({
+  id: '/patrimonio',
+  path: '/patrimonio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TransacoesRoute = TransacoesRouteImport.update({
   id: '/transacoes',
   path: '/transacoes',
@@ -49,51 +85,104 @@ const TransacoesRoute = TransacoesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/cartoes': typeof CartoesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/contas': typeof ContasRoute
+  '/dividas': typeof DividasRoute
+  '/investimentos': typeof InvestimentosRoute
   '/metas': typeof MetasRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/patrimonio': typeof PatrimonioRoute
+  '/relatorios': typeof RelatoriosRoute
   '/transacoes': typeof TransacoesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/cartoes': typeof CartoesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/contas': typeof ContasRoute
+  '/dividas': typeof DividasRoute
+  '/investimentos': typeof InvestimentosRoute
   '/metas': typeof MetasRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/patrimonio': typeof PatrimonioRoute
+  '/relatorios': typeof RelatoriosRoute
   '/transacoes': typeof TransacoesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/cartoes': typeof CartoesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/contas': typeof ContasRoute
+  '/dividas': typeof DividasRoute
+  '/investimentos': typeof InvestimentosRoute
   '/metas': typeof MetasRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/patrimonio': typeof PatrimonioRoute
+  '/relatorios': typeof RelatoriosRoute
   '/transacoes': typeof TransacoesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/cartoes' | '/contas' | '/metas' | '/orcamentos' | '/transacoes'
+    | '/'
+    | '/agenda'
+    | '/cartoes'
+    | '/configuracoes'
+    | '/contas'
+    | '/dividas'
+    | '/investimentos'
+    | '/metas'
+    | '/orcamentos'
+    | '/patrimonio'
+    | '/relatorios'
+    | '/transacoes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cartoes' | '/contas' | '/metas' | '/orcamentos' | '/transacoes'
+  to:
+    | '/'
+    | '/agenda'
+    | '/cartoes'
+    | '/configuracoes'
+    | '/contas'
+    | '/dividas'
+    | '/investimentos'
+    | '/metas'
+    | '/orcamentos'
+    | '/patrimonio'
+    | '/relatorios'
+    | '/transacoes'
   id:
     | '__root__'
     | '/'
+    | '/agenda'
     | '/cartoes'
+    | '/configuracoes'
     | '/contas'
+    | '/dividas'
+    | '/investimentos'
     | '/metas'
     | '/orcamentos'
+    | '/patrimonio'
+    | '/relatorios'
     | '/transacoes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgendaRoute: typeof AgendaRoute
   CartoesRoute: typeof CartoesRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContasRoute: typeof ContasRoute
+  DividasRoute: typeof DividasRoute
+  InvestimentosRoute: typeof InvestimentosRoute
   MetasRoute: typeof MetasRoute
   OrcamentosRoute: typeof OrcamentosRoute
+  PatrimonioRoute: typeof PatrimonioRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   TransacoesRoute: typeof TransacoesRoute
 }
 
@@ -106,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agenda': {
+      id: '/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cartoes': {
       id: '/cartoes'
       path: '/cartoes'
@@ -113,11 +209,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CartoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contas': {
       id: '/contas'
       path: '/contas'
       fullPath: '/contas'
       preLoaderRoute: typeof ContasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dividas': {
+      id: '/dividas'
+      path: '/dividas'
+      fullPath: '/dividas'
+      preLoaderRoute: typeof DividasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investimentos': {
+      id: '/investimentos'
+      path: '/investimentos'
+      fullPath: '/investimentos'
+      preLoaderRoute: typeof InvestimentosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/metas': {
@@ -134,6 +251,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrcamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/patrimonio': {
+      id: '/patrimonio'
+      path: '/patrimonio'
+      fullPath: '/patrimonio'
+      preLoaderRoute: typeof PatrimonioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/transacoes': {
       id: '/transacoes'
       path: '/transacoes'
@@ -146,10 +277,16 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgendaRoute: AgendaRoute,
   CartoesRoute: CartoesRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   ContasRoute: ContasRoute,
+  DividasRoute: DividasRoute,
+  InvestimentosRoute: InvestimentosRoute,
   MetasRoute: MetasRoute,
   OrcamentosRoute: OrcamentosRoute,
+  PatrimonioRoute: PatrimonioRoute,
+  RelatoriosRoute: RelatoriosRoute,
   TransacoesRoute: TransacoesRoute,
 }
 export const routeTree = rootRouteImport
