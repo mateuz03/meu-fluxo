@@ -43,7 +43,10 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     setLoading(false);
-    if (error) return toast.error("Não foi possível entrar", { description: error.message });
+    if (error) {
+      toast.error("Não foi possível entrar", { description: error.message });
+      return;
+    }
     navigate({ to: "/", replace: true });
   }
 
@@ -59,7 +62,10 @@ function AuthPage() {
       },
     });
     setLoading(false);
-    if (error) return toast.error("Não foi possível criar a conta", { description: error.message });
+    if (error) {
+      toast.error("Não foi possível criar a conta", { description: error.message });
+      return;
+    }
     if (data.session) {
       navigate({ to: "/", replace: true });
     } else {
@@ -70,11 +76,17 @@ function AuthPage() {
   }
 
   async function recuperar() {
-    if (!email) return toast.error("Informe seu e-mail para receber o link.");
+    if (!email) {
+      toast.error("Informe seu e-mail para receber o link.");
+      return;
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/redefinir-senha`,
     });
-    if (error) return toast.error("Falha ao enviar o link", { description: error.message });
+    if (error) {
+      toast.error("Falha ao enviar o link", { description: error.message });
+      return;
+    }
     toast.success("Link enviado", { description: "Confira sua caixa de entrada." });
   }
 
