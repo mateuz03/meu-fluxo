@@ -1,72 +1,113 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Target } from "lucide-react";
+import { Target } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { RecordDialog, type Field } from "@/components/record-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { brl, longDate, pct } from "@/lib/format";
-import { metas } from "@/lib/mock-data";
+import type { Tables } from "@/integrations/supabase/types";
+import { useRows } from "@/lib/db";
+import { brlFromCents, longDate, pct } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/metas")({
-  head: () => ({
-    meta: [
-      { title: "Metas financeiras — Meu Financeiro" },
-      { name: "description", content: "Acompanhe objetivos como reserva de emergência, viagens e entrada de imóvel." },
-      { property: "og:title", content: "Metas financeiras — Meu Financeiro" },
-      { property: "og:description", content: "Progresso, prazo e aporte sugerido para cada objetivo." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Metas financeiras — Meu Financeiro" }] }),
   component: Metas,
 });
 
+const fields: Field[] = [
+  {
+    name: "name",
+    label: "Nome da meta",
+    type: "text",
+    required: true,
+    placeholder: "Ex.: Reserva de emergência",
+  },
+  { name: "target_cents", label: "Valor desejado", type: "money", required: true, min: 0 },
+  { name: "current_cents", label: "Valor já acumulado", type: "money", default: "0", min: 0 },
+  { name: "deadline", label: "Data desejada", type: "date" },
+];
+
 function Metas() {
+  const goals = useRows<Tables<"financial_goals">>("financial_goals", { orderBy: "deadline" });
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Metas e objetivos"
-        description="Progresso de cada plano financeiro"
+        description="Progresso dos seus planos financeiros"
         action={
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" /> Nova meta
-          </Button>
+          <RecordDialog
+            table="financial_goals"
+            title="Nova meta"
+            fields={fields}
+            label="Nova meta"
+          />
         }
       />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {metas.map((m) => {
-          const p = (m.atual / m.alvo) * 100;
-          const meses = Math.max(
-            1,
-            Math.round((new Date(m.prazo).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)),
-          );
-          return (
-            <Card key={m.id}>
-              <CardContent className="space-y-3 p-5">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
-                    <Target className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{m.nome}</p>
-                    <p className="truncate text-xs text-muted-foreground">Prazo: {longDate(m.prazo)}</p>
+      {goals.isLoading ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">Carregando metas...</p>
+      ) : goals.isError ? (
+        <EmptyState
+          icon={Target}
+          title="Não foi possível carregar suas metas"
+          description="Verifique sua conexão e tente novamente."
+        />
+      ) : (goals.data ?? []).length === 0 ? (
+        <EmptyState
+          icon={Target}
+          title="Nenhuma meta cadastrada"
+          description="Crie um objetivo e acompanhe sua evolução."
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(goals.data ?? []).map((goal) => {
+            const progress =
+              goal.target_cents > 0 ? (goal.current_cents / goal.target_cents) * 100 : 0;
+            const months = goal.deadline
+              ? Math.max(
+                  1,
+                  Math.ceil(
+                    (new Date(`${goal.deadline}T12:00:00`).getTime() - Date.now()) / 2_629_800_000,
+                  ),
+                )
+              : null;
+            const monthly = months
+              ? Math.max(goal.target_cents - goal.current_cents, 0) / months
+              : null;
+            return (
+              <Card key={goal.id}>
+                <CardContent className="space-y-3 p-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
+                      <Target className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{goal.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {goal.deadline ? `Prazo: ${longDate(goal.deadline)}` : "Sem prazo definido"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <Progress value={p} />
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="num text-muted-foreground">
-                    {brl(m.atual)} de {brl(m.alvo)}
-                  </span>
-                  <span className="num font-semibold">{pct(p)}</span>
-                </div>
-                <p className="num rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
-                  Aporte sugerido: {brl((m.alvo - m.atual) / meses)} por mês
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  <Progress value={Math.min(progress, 100)} />
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="num text-muted-foreground">
+                      {brlFromCents(goal.current_cents)} de {brlFromCents(goal.target_cents)}
+                    </span>
+                    <span className="num font-semibold">{pct(progress)}</span>
+                  </div>
+                  {monthly !== null ? (
+                    <p className="num rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                      Simulação de aporte: {brlFromCents(monthly)} por mês. Esta previsão é apenas
+                      uma estimativa.
+                    </p>
+                  ) : null}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

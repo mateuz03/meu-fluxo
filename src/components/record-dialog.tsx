@@ -29,6 +29,9 @@ export type Field = {
   required?: boolean;
   default?: string;
   options?: { value: string; label: string }[];
+  placeholder?: string;
+  min?: number;
+  max?: number;
 };
 
 export function RecordDialog({
@@ -93,7 +96,7 @@ export function RecordDialog({
                   onValueChange={(v) => setValues((s) => ({ ...s, [f.name]: v }))}
                 >
                   <SelectTrigger id={f.name}>
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder={f.placeholder ?? "Selecione"} />
                   </SelectTrigger>
                   <SelectContent>
                     {(f.options ?? []).map((o) => (
@@ -110,6 +113,9 @@ export function RecordDialog({
                   step={f.type === "money" ? "0.01" : undefined}
                   inputMode={f.type === "text" ? undefined : "decimal"}
                   required={f.required}
+                  min={f.min}
+                  max={f.max}
+                  placeholder={f.placeholder}
                   value={get(f)}
                   onChange={(e) => setValues((s) => ({ ...s, [f.name]: e.target.value }))}
                 />

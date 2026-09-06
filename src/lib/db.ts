@@ -38,19 +38,42 @@ export function useRows<T = Record<string, unknown>>(
 export function useInsertRow(table: TableName) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (values: Record<string, unknown>) => {
-      const { data: auth } = await supabase.auth.getUser();
+    mutationFn: async (values: Record<string, unknown> | Record<string, unknown>[]) => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw new Error("Sua sessão expirou. Entre novamente.");
       const userId = auth.user?.id;
       if (!userId) throw new Error("Sessão expirada. Entre novamente.");
-      const payload = table === "profiles" ? values : { ...values, user_id: userId };
+      const payload = Array.isArray(values)
+        ? values.map((value) => ({ ...value, user_id: userId }))
+        : table === "profiles"
+          ? values
+          : { ...values, user_id: userId };
       const { error } = await supabase.from(table).insert(payload as never);
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries();
+      qc.invalidateQueries({ queryKey: [table] });
       toast.success("Registro salvo");
     },
-    onError: (e: Error) => toast.error("Não foi possível salvar", { description: e.message }),
+    onError: () => toast.error("Não foi possível salvar. Verifique os dados e tente novamente."),
+  });
+}
+
+export function useUpdateRow(table: TableName) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: Record<string, unknown> }) => {
+      const { error } = await supabase
+        .from(table)
+        .update(values as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [table] });
+      toast.success("Alterações salvas");
+    },
+    onError: () => toast.error("Não foi possível salvar as alterações."),
   });
 }
 
@@ -62,10 +85,10 @@ export function useDeleteRow(table: TableName) {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries();
+      qc.invalidateQueries({ queryKey: [table] });
       toast.success("Registro excluído");
     },
-    onError: (e: Error) => toast.error("Não foi possível excluir", { description: e.message }),
+    onError: () => toast.error("Não foi possível excluir este registro."),
   });
 }
 
@@ -83,5 +106,24 @@ export function useProfile() {
       if (error) throw error;
       return data;
     },
+  });
+}
+
+export function useSaveProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: Record<string, unknown>) => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth.user) throw new Error("Sua sessão expirou. Entre novamente.");
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ id: auth.user.id, ...values } as never, { onConflict: "id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Preferências salvas");
+    },
+    onError: () => toast.error("Não foi possível salvar suas preferências."),
   });
 }

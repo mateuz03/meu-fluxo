@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -16,14 +16,17 @@ import {
   Plus,
   Moon,
   Sun,
+  LogOut,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
-export const navItems = [
+const navItems = [
   { to: "/", label: "Visão geral", icon: LayoutDashboard },
   { to: "/transacoes", label: "Transações", icon: ArrowLeftRight },
   { to: "/contas", label: "Contas", icon: Wallet },
@@ -45,7 +48,13 @@ const bottomItems = navItems.filter((i) =>
 function useThemeToggle() {
   const [dark, setDark] = useState(false);
   useEffect(() => {
+    const saved = window.localStorage.getItem("meu-financeiro-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setDark(saved ? saved === "dark" : prefersDark);
+  }, []);
+  useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
+    window.localStorage.setItem("meu-financeiro-theme", dark ? "dark" : "light");
   }, [dark]);
   return { dark, toggle: () => setDark((d) => !d) };
 }
@@ -87,7 +96,7 @@ function Brand() {
         <p className="truncate font-display text-base font-semibold text-sidebar-foreground">
           Meu Financeiro
         </p>
-        <p className="truncate text-xs text-sidebar-foreground/60">Protótipo com dados fictícios</p>
+        <p className="truncate text-xs text-sidebar-foreground/60">Seus dados, sua privacidade</p>
       </div>
     </div>
   );
@@ -96,15 +105,34 @@ function Brand() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const { dark, toggle } = useThemeToggle();
+  const navigate = useNavigate();
+
+  async function logout() {
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      toast.error("Não foi possível sair. Tente novamente.");
+      return;
+    }
+    navigate({ to: "/auth", replace: true });
+  }
 
   return (
     <div className="min-h-screen w-full bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col gap-6 overflow-y-auto bg-sidebar p-4 lg:flex">
         <Brand />
         <NavList />
-        <p className="mt-auto rounded-xl bg-sidebar-accent p-3 text-[11px] leading-relaxed text-sidebar-accent-foreground/80">
-          Este app organiza suas finanças e não constitui recomendação de investimento.
-        </p>
+        <div className="mt-auto grid gap-3">
+          <p className="rounded-xl bg-sidebar-accent p-3 text-[11px] leading-relaxed text-sidebar-accent-foreground/80">
+            Este app organiza suas finanças e não constitui recomendação de investimento.
+          </p>
+          <Button
+            variant="ghost"
+            className="justify-start gap-2 text-sidebar-foreground/80"
+            onClick={logout}
+          >
+            <LogOut className="h-4 w-4" /> Sair
+          </Button>
+        </div>
       </aside>
 
       <div className="lg:pl-64">
@@ -131,14 +159,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Alternar tema">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Novo lançamento</span>
+            <Button size="sm" className="gap-1.5" asChild>
+              <Link to="/transacoes">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Novo lançamento</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={logout} aria-label="Sair">
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:pb-12">{children}</main>
+        <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:pb-12">
+          {children}
+        </main>
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border bg-card/95 backdrop-blur lg:hidden">

@@ -1,89 +1,188 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CreditCard, Plus } from "lucide-react";
+import { CreditCard } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordDialog, type Field } from "@/components/record-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { brl } from "@/lib/format";
-import { cartoes, parceladas } from "@/lib/mock-data";
+import type { Tables } from "@/integrations/supabase/types";
+import { useRows } from "@/lib/db";
+import { brlFromCents } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/cartoes")({
-  head: () => ({
-    meta: [
-      { title: "Cartões de crédito — Meu Financeiro" },
-      { name: "description", content: "Faturas, limites disponíveis e compras parceladas dos seus cartões." },
-      { property: "og:title", content: "Cartões de crédito — Meu Financeiro" },
-      { property: "og:description", content: "Controle faturas, limites e parcelamentos." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Cartões de crédito — Meu Financeiro" }] }),
   component: Cartoes,
 });
 
 function Cartoes() {
+  const cards = useRows<Tables<"credit_cards">>("credit_cards", { orderBy: "name" });
+  const accounts = useRows<Tables<"accounts">>("accounts", { orderBy: "name" });
+  const transactions = useRows<Tables<"transactions">>("transactions");
+  const installments = useRows<Tables<"card_installments">>("card_installments", {
+    orderBy: "first_charge_on",
+  });
+  const cardNames = new Map((cards.data ?? []).map((card) => [card.id, card.name]));
+  const currentMonth = new Date()
+    .toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })
+    .slice(0, 7);
+  const invoice = (cardId: string) =>
+    (transactions.data ?? [])
+      .filter(
+        (tx) =>
+          tx.credit_card_id === cardId &&
+          tx.type === "despesa" &&
+          tx.status !== "cancelado" &&
+          tx.occurred_on.startsWith(currentMonth),
+      )
+      .reduce((sum, tx) => sum + tx.amount_cents, 0);
+
+  const fields: Field[] = [
+    {
+      name: "name",
+      label: "Nome do cartão",
+      type: "text",
+      required: true,
+      placeholder: "Ex.: Cartão principal",
+    },
+    {
+      name: "brand",
+      label: "Bandeira",
+      type: "select",
+      options: ["Visa", "Mastercard", "Elo", "American Express", "Outra"].map((brand) => ({
+        value: brand,
+        label: brand,
+      })),
+    },
+    { name: "limit_cents", label: "Limite", type: "money", required: true, min: 0 },
+    {
+      name: "closing_day",
+      label: "Dia de fechamento",
+      type: "number",
+      required: true,
+      default: "1",
+      min: 1,
+      max: 31,
+    },
+    {
+      name: "due_day",
+      label: "Dia de vencimento",
+      type: "number",
+      required: true,
+      default: "10",
+      min: 1,
+      max: 31,
+    },
+    {
+      name: "payment_account_id",
+      label: "Conta para pagamento",
+      type: "select",
+      options: (accounts.data ?? [])
+        .filter((account) => !account.archived)
+        .map((account) => ({ value: account.id, label: account.name })),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Cartões"
-        description="Faturas, limites e compras parceladas"
+        description="Faturas do mês, limites e compras parceladas"
         action={
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" /> Novo cartão
-          </Button>
+          <RecordDialog
+            table="credit_cards"
+            title="Novo cartão"
+            fields={fields}
+            label="Novo cartão"
+          />
         }
       />
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {cartoes.map((k) => {
-          const uso = (k.fatura / k.limite) * 100;
-          return (
-            <Card key={k.id} className="overflow-hidden">
-              <CardContent className="space-y-4 p-5">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{k.nome}</p>
-                    <p className="text-xs text-muted-foreground">{k.bandeira}</p>
+      {cards.isLoading || transactions.isLoading ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">Carregando cartões...</p>
+      ) : cards.isError || transactions.isError ? (
+        <EmptyState
+          icon={CreditCard}
+          title="Não foi possível carregar os cartões"
+          description="Verifique sua conexão e tente novamente."
+        />
+      ) : (cards.data ?? []).length === 0 ? (
+        <EmptyState
+          icon={CreditCard}
+          title="Nenhum cartão cadastrado"
+          description="Cadastre um cartão e associe suas compras a ele."
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {(cards.data ?? []).map((card) => {
+            const total = invoice(card.id);
+            const usage = card.limit_cents > 0 ? (total / card.limit_cents) * 100 : 0;
+            return (
+              <Card key={card.id} className="overflow-hidden">
+                <CardContent className="space-y-4 p-5">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{card.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {card.brand || "Bandeira não informada"}
+                      </p>
+                    </div>
+                    <CreditCard className="h-5 w-5 shrink-0" style={{ color: card.color }} />
                   </div>
-                  <CreditCard className="h-5 w-5 shrink-0 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase text-muted-foreground">Fatura atual</p>
-                  <p className="num text-2xl font-bold">{brl(k.fatura)}</p>
-                </div>
-                <Progress value={uso} />
-                <p className="num text-xs text-muted-foreground">
-                  Limite disponível {brl(k.limite - k.fatura)} de {brl(k.limite)}
-                </p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">Fecha {k.fechamento}</Badge>
-                  <Badge variant="secondary">Vence {k.vencimento}</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  <div>
+                    <p className="text-xs uppercase text-muted-foreground">Fatura do mês</p>
+                    <p className="num text-2xl font-bold">{brlFromCents(total)}</p>
+                  </div>
+                  <Progress value={Math.min(usage, 100)} />
+                  <p className="num text-xs text-muted-foreground">
+                    Limite disponível {brlFromCents(Math.max(card.limit_cents - total, 0))} de{" "}
+                    {brlFromCents(card.limit_cents)}
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <Badge variant="outline">Fecha dia {card.closing_day}</Badge>
+                    <Badge variant="secondary">Vence dia {card.due_day}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Compras parceladas</CardTitle>
         </CardHeader>
         <CardContent className="divide-y divide-border p-0">
-          {parceladas.map((p) => (
-            <div key={p.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{p.descricao}</p>
-                <p className="truncate text-xs text-muted-foreground">{p.cartao}</p>
+          {(installments.data ?? []).length === 0 ? (
+            <p className="p-5 text-sm text-muted-foreground">
+              Nenhuma compra parcelada cadastrada.
+            </p>
+          ) : (
+            (installments.data ?? []).map((item) => (
+              <div
+                key={item.id}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{item.description}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {cardNames.get(item.credit_card_id ?? "") || "Cartão removido"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Badge variant="outline">
+                    {item.installments_paid}/{item.installments_total}
+                  </Badge>
+                  <span className="num text-sm font-semibold">
+                    {brlFromCents(
+                      Math.round(item.total_cents / Math.max(item.installments_total, 1)),
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <Badge variant="outline">
-                  {p.parcela}/{p.total}
-                </Badge>
-                <span className="num text-sm font-semibold">{brl(p.valor)}</span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
