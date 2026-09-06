@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { brl, pct } from "@/lib/format";
 import { dividas } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/dividas")({
+export const Route = createFileRoute("/_authenticated/dividas")({
   head: () => ({
     meta: [
       { title: "Dívidas — Meu Financeiro" },

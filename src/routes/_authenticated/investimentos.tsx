@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brl, pct } from "@/lib/format";
 import { investimentos } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/investimentos")({
+export const Route = createFileRoute("/_authenticated/investimentos")({
   head: () => ({
     meta: [
       { title: "Investimentos — Meu Financeiro" },

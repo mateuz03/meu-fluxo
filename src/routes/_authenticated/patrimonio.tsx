@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brl } from "@/lib/format";
 import { dividas, evolucaoPatrimonio, patrimonio } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/patrimonio")({
+export const Route = createFileRoute("/_authenticated/patrimonio")({
   head: () => ({
     meta: [
       { title: "Patrimônio — Meu Financeiro" },

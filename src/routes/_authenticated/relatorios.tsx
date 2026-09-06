@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brl } from "@/lib/format";
 import { despesasPorCategoria, fluxoMensal } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/relatorios")({
+export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({
     meta: [
       { title: "Relatórios — Meu Financeiro" },

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { brl } from "@/lib/format";
 import { contas } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/contas")({
+export const Route = createFileRoute("/_authenticated/contas")({
   head: () => ({
     meta: [
       { title: "Contas bancárias — Meu Financeiro" },
