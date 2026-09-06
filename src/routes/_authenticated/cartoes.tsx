@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { brl } from "@/lib/format";
 import { cartoes, parceladas } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/cartoes")({
+export const Route = createFileRoute("/_authenticated/cartoes")({
   head: () => ({
     meta: [
       { title: "Cartões de crédito — Meu Financeiro" },

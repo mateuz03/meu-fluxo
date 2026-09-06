@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { brl, longDate, pct } from "@/lib/format";
 import { metas } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/metas")({
+export const Route = createFileRoute("/_authenticated/metas")({
   head: () => ({
     meta: [
       { title: "Metas financeiras — Meu Financeiro" },

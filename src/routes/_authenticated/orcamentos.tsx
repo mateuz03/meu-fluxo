@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { brl, pct } from "@/lib/format";
 import { orcamentos } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/orcamentos")({
+export const Route = createFileRoute("/_authenticated/orcamentos")({
   head: () => ({
     meta: [
       { title: "Orçamentos mensais — Meu Financeiro" },

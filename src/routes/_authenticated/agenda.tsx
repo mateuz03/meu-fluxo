@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brl, longDate } from "@/lib/format";
 import { agenda, recorrentes } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/agenda")({
+export const Route = createFileRoute("/_authenticated/agenda")({
   head: () => ({
     meta: [
       { title: "Agenda financeira — Meu Financeiro" },

@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/empty-state";
 import { brl, shortDate } from "@/lib/format";
 import { movimentos } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/transacoes")({
+export const Route = createFileRoute("/_authenticated/transacoes")({
   head: () => ({
     meta: [
       { title: "Transações — Meu Financeiro" },
