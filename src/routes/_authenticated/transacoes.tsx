@@ -4,11 +4,19 @@ import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tables } from "@/integrations/supabase/types";
 import { useRows } from "@/lib/db";
@@ -22,6 +30,8 @@ export const Route = createFileRoute("/_authenticated/transacoes")({
 function Transacoes() {
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState("todos");
+  const [status, setStatus] = useState("todos");
+  const [month, setMonth] = useState("");
   const transactions = useRows<Tables<"transactions">>("transactions", {
     orderBy: "occurred_on",
     ascending: false,
@@ -85,6 +95,8 @@ function Transacoes() {
       name: "account_id",
       label: "Conta",
       type: "select",
+      allowEmpty: true,
+      emptyLabel: "Sem conta",
       options: (accounts.data ?? [])
         .filter((account) => !account.archived)
         .map((account) => ({ value: account.id, label: account.name })),
@@ -93,6 +105,8 @@ function Transacoes() {
       name: "category_id",
       label: "Categoria",
       type: "select",
+      allowEmpty: true,
+      emptyLabel: "Sem categoria",
       options: (categories.data ?? [])
         .filter((category) => !category.archived)
         .map((category) => ({ value: category.id, label: category.name })),
@@ -101,6 +115,8 @@ function Transacoes() {
       name: "credit_card_id",
       label: "Cartão (se aplicável)",
       type: "select",
+      allowEmpty: true,
+      emptyLabel: "Sem cartão",
       options: (cards.data ?? [])
         .filter((card) => !card.archived)
         .map((card) => ({ value: card.id, label: card.name })),
@@ -113,9 +129,14 @@ function Transacoes() {
       (transactions.data ?? []).filter((tx) => {
         const searchable =
           `${tx.description} ${categoryNames.get(tx.category_id ?? "") ?? ""} ${accountNames.get(tx.account_id ?? "") ?? ""} ${cardNames.get(tx.credit_card_id ?? "") ?? ""}`.toLowerCase();
-        return (tipo === "todos" || tx.type === tipo) && searchable.includes(busca.toLowerCase());
+        return (
+          (tipo === "todos" || tx.type === tipo) &&
+          (status === "todos" || tx.status === status) &&
+          (!month || tx.occurred_on.startsWith(month)) &&
+          searchable.includes(busca.toLowerCase())
+        );
       }),
-    [transactions.data, tipo, busca, categoryNames, accountNames, cardNames],
+    [transactions.data, tipo, status, month, busca, categoryNames, accountNames, cardNames],
   );
   const valid = lista.filter((tx) => tx.status !== "cancelado");
   const receitas = valid
@@ -156,9 +177,32 @@ function Transacoes() {
             <TabsTrigger value="despesa">Despesas</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button variant="outline" size="icon" aria-label="Filtros">
-          <Filter className="h-4 w-4" />
-        </Button>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Filter className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[130px]" aria-label="Filtrar por status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os status</SelectItem>
+              <SelectItem value="pago">Pago</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            type="month"
+            value={month}
+            onChange={(event) => setMonth(event.target.value)}
+            aria-label="Filtrar por mês"
+            className="w-[145px]"
+          />
+          {month ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMonth("")}>
+              Limpar mês
+            </Button>
+          ) : null}
+        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
@@ -217,16 +261,26 @@ function Transacoes() {
                       "Sem conta"}
                   </p>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span
-                    className={`num text-sm font-semibold ${tx.type === "receita" ? "text-success" : tx.type === "despesa" ? "text-destructive" : ""}`}
-                  >
-                    {tx.type === "receita" ? "+" : tx.type === "despesa" ? "−" : ""}{" "}
-                    {brlFromCents(tx.amount_cents)}
-                  </span>
-                  <Badge variant={tx.status === "pago" ? "secondary" : "outline"}>
-                    {tx.status}
-                  </Badge>
+                <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex flex-col items-end gap-1">
+                    <span
+                      className={`num text-sm font-semibold ${tx.type === "receita" ? "text-success" : tx.type === "despesa" ? "text-destructive" : ""}`}
+                    >
+                      {tx.type === "receita" ? "+" : tx.type === "despesa" ? "−" : ""}{" "}
+                      {brlFromCents(tx.amount_cents)}
+                    </span>
+                    <Badge variant={tx.status === "pago" ? "secondary" : "outline"}>
+                      {tx.status}
+                    </Badge>
+                  </div>
+                  <RecordActions
+                    table="transactions"
+                    id={tx.id}
+                    editTitle={`Editar ${tx.description}`}
+                    fields={fields}
+                    values={{ ...tx }}
+                    deleteDescription="O lançamento será removido dos saldos, relatórios e orçamentos. Esta ação não pode ser desfeita."
+                  />
                 </div>
               </div>
             ))}

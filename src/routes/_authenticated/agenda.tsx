@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, CheckCircle2, Pause, Play, RotateCcw } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Tables } from "@/integrations/supabase/types";
-import { useRows } from "@/lib/db";
+import { useRows, useUpdateRow } from "@/lib/db";
 import { saoPauloToday } from "@/lib/finance";
 import { brlFromCents, longDate } from "@/lib/format";
 
@@ -24,6 +26,8 @@ function AgendaPage() {
   });
   const accounts = useRows<Tables<"accounts">>("accounts", { orderBy: "name" });
   const categories = useRows<Tables<"categories">>("categories", { orderBy: "name" });
+  const updateReminder = useUpdateRow("reminders");
+  const updateSubscription = useUpdateRow("subscriptions");
   const rows = reminders.data ?? [];
   const toPay = rows
     .filter((item) => !item.done && item.kind === "despesa")
@@ -66,6 +70,8 @@ function AgendaPage() {
       name: "category_id",
       label: "Categoria",
       type: "select",
+      allowEmpty: true,
+      emptyLabel: "Sem categoria",
       options: (categories.data ?? [])
         .filter((category) => category.kind === "despesa")
         .map((category) => ({ value: category.id, label: category.name })),
@@ -74,6 +80,8 @@ function AgendaPage() {
       name: "account_id",
       label: "Conta de pagamento",
       type: "select",
+      allowEmpty: true,
+      emptyLabel: "Sem conta definida",
       options: (accounts.data ?? [])
         .filter((account) => !account.archived)
         .map((account) => ({ value: account.id, label: account.name })),
@@ -142,15 +150,41 @@ function AgendaPage() {
                         {item.done ? " · concluído" : ""}
                       </p>
                     </div>
-                    <span
-                      className={
-                        item.kind === "receita"
-                          ? "num text-sm font-semibold text-success"
-                          : "num text-sm font-semibold text-destructive"
-                      }
-                    >
-                      {item.kind === "receita" ? "+" : "−"} {brlFromCents(item.amount_cents)}
-                    </span>
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      <span
+                        className={
+                          item.kind === "receita"
+                            ? "num text-sm font-semibold text-success"
+                            : "num text-sm font-semibold text-destructive"
+                        }
+                      >
+                        {item.kind === "receita" ? "+" : "−"} {brlFromCents(item.amount_cents)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={updateReminder.isPending}
+                        aria-label={item.done ? "Reabrir lembrete" : "Concluir lembrete"}
+                        onClick={() =>
+                          updateReminder.mutate({ id: item.id, values: { done: !item.done } })
+                        }
+                      >
+                        {item.done ? (
+                          <RotateCcw className="h-4 w-4" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <RecordActions
+                        table="reminders"
+                        id={item.id}
+                        editTitle={`Editar ${item.title}`}
+                        fields={reminderFields}
+                        values={{ ...item }}
+                        deleteDescription="O lembrete será excluído da agenda. Esta ação não pode ser desfeita."
+                      />
+                    </div>
                   </div>
                 ))
               )}
@@ -180,13 +214,36 @@ function AgendaPage() {
                         {categoryNames.get(item.category_id ?? "") || "Sem categoria"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
                       <span className="num text-sm font-semibold">
                         {brlFromCents(item.amount_cents)}
                       </span>
                       <Badge variant={item.active ? "secondary" : "outline"}>
                         {item.active ? "ativa" : "pausada"}
                       </Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={updateSubscription.isPending}
+                        aria-label={item.active ? "Pausar recorrência" : "Reativar recorrência"}
+                        onClick={() =>
+                          updateSubscription.mutate({
+                            id: item.id,
+                            values: { active: !item.active },
+                          })
+                        }
+                      >
+                        {item.active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <RecordActions
+                        table="subscriptions"
+                        id={item.id}
+                        editTitle={`Editar ${item.name}`}
+                        fields={subscriptionFields}
+                        values={{ ...item }}
+                        deleteDescription="A recorrência será removida da agenda. Lançamentos já existentes não serão alterados."
+                      />
                     </div>
                   </div>
                 ))

@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useInsertRow, type TableName } from "@/lib/db";
+import { useInsertRow, useUpdateRow, type TableName } from "@/lib/db";
 import { toCents } from "@/lib/format";
 
 export type Field = {
@@ -32,7 +33,27 @@ export type Field = {
   placeholder?: string;
   min?: number;
   max?: number;
+  allowEmpty?: boolean;
+  emptyLabel?: string;
 };
+
+const EMPTY_SELECT_VALUE = "__empty__";
+
+function fieldValues(fields: Field[], initialValues?: Record<string, unknown>) {
+  return Object.fromEntries(
+    fields.map((field) => {
+      const hasInitialValue = Object.prototype.hasOwnProperty.call(initialValues ?? {}, field.name);
+      const raw = initialValues?.[field.name] ?? field.default ?? "";
+      if (raw === null || raw === undefined || raw === "") {
+        return [field.name, field.type === "select" && field.allowEmpty ? EMPTY_SELECT_VALUE : ""];
+      }
+      if (field.type === "money" && hasInitialValue) {
+        return [field.name, (Number(raw) / 100).toFixed(2)];
+      }
+      return [field.name, String(raw)];
+    }),
+  );
+}
 
 export function RecordDialog({
   table,
@@ -40,41 +61,65 @@ export function RecordDialog({
   fields,
   trigger,
   label = "Adicionar",
+  recordId,
+  initialValues,
 }: {
   table: TableName;
   title: string;
   fields: Field[];
   trigger?: ReactNode;
   label?: string;
+  recordId?: string;
+  initialValues?: Record<string, unknown>;
 }) {
   const [open, setOpen] = useState(false);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    fieldValues(fields, initialValues),
+  );
   const insert = useInsertRow(table);
+  const update = useUpdateRow(table);
+  const pending = recordId ? update.isPending : insert.isPending;
 
   function get(f: Field) {
     return values[f.name] ?? f.default ?? "";
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) setValues(fieldValues(fields, initialValues));
+    setOpen(nextOpen);
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const payload: Record<string, unknown> = {};
-    for (const f of fields) {
-      const raw = get(f);
-      if (raw === "") continue;
-      if (f.type === "money") payload[f.name] = toCents(raw);
-      else if (f.type === "number") payload[f.name] = Number(raw);
-      else payload[f.name] = raw;
-    }
-    insert.mutate(payload, {
-      onSuccess: () => {
-        setValues({});
+    try {
+      const payload: Record<string, unknown> = {};
+      for (const f of fields) {
+        const raw = get(f);
+        if (raw === EMPTY_SELECT_VALUE) {
+          payload[f.name] = null;
+          continue;
+        }
+        if (raw === "") {
+          if (recordId) payload[f.name] = null;
+          continue;
+        }
+        if (f.type === "money") payload[f.name] = toCents(raw);
+        else if (f.type === "number") payload[f.name] = Number(raw);
+        else payload[f.name] = raw;
+      }
+      const onSuccess = () => {
+        setValues(fieldValues(fields, initialValues));
         setOpen(false);
-      },
-    });
+      };
+      if (recordId) update.mutate({ id: recordId, values: payload }, { onSuccess });
+      else insert.mutate(payload, { onSuccess });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Verifique os dados informados.");
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button size="sm" className="gap-1.5">
@@ -99,6 +144,9 @@ export function RecordDialog({
                     <SelectValue placeholder={f.placeholder ?? "Selecione"} />
                   </SelectTrigger>
                   <SelectContent>
+                    {f.allowEmpty ? (
+                      <SelectItem value={EMPTY_SELECT_VALUE}>{f.emptyLabel ?? "Nenhum"}</SelectItem>
+                    ) : null}
                     {(f.options ?? []).map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         {o.label}
@@ -123,8 +171,8 @@ export function RecordDialog({
             </div>
           ))}
           <DialogFooter>
-            <Button type="submit" disabled={insert.isPending} className="w-full">
-              {insert.isPending ? "Salvando..." : "Salvar"}
+            <Button type="submit" disabled={pending} className="w-full">
+              {pending ? "Salvando..." : recordId ? "Salvar alterações" : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

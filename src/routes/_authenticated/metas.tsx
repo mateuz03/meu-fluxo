@@ -3,6 +3,7 @@ import { Target } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -88,6 +89,15 @@ function Metas() {
                         {goal.deadline ? `Prazo: ${longDate(goal.deadline)}` : "Sem prazo definido"}
                       </p>
                     </div>
+                    <RecordActions
+                      table="financial_goals"
+                      id={goal.id}
+                      editTitle={`Editar ${goal.name}`}
+                      fields={fields}
+                      values={{ ...goal }}
+                      deleteDescription="A meta e o histórico de contribuições vinculado a ela serão excluídos. Esta ação não pode ser desfeita."
+                      className="ml-auto"
+                    />
                   </div>
                   <Progress value={Math.min(progress, 100)} />
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">

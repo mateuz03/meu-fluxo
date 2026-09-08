@@ -3,6 +3,7 @@ import { Receipt } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -90,11 +91,21 @@ function DividasPage() {
                       : ""}
                   </p>
                 </div>
-                <div className="text-left sm:text-right">
-                  <p className="num text-sm font-semibold">{brlFromCents(debt.balance_cents)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Parcela {brlFromCents(debt.installment_cents)}
-                  </p>
+                <div className="flex items-center gap-1 sm:justify-end">
+                  <div className="text-left sm:text-right">
+                    <p className="num text-sm font-semibold">{brlFromCents(debt.balance_cents)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Parcela {brlFromCents(debt.installment_cents)}
+                    </p>
+                  </div>
+                  <RecordActions
+                    table="debts"
+                    id={debt.id}
+                    editTitle={`Editar ${debt.name}`}
+                    fields={fields}
+                    values={{ ...debt }}
+                    deleteDescription="A dívida será removida dos cálculos do patrimônio líquido. Esta ação não pode ser desfeita."
+                  />
                 </div>
               </CardContent>
             </Card>

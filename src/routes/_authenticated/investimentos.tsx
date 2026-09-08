@@ -4,6 +4,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -166,13 +167,23 @@ function InvestimentosPage() {
                         {new Date(`${asset.value_updated_on}T12:00:00`).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="num text-sm font-semibold">
-                        {brlFromCents(asset.current_cents)}
-                      </p>
-                      <Badge variant={performance >= 0 ? "secondary" : "destructive"}>
-                        {pct(performance, 1)}
-                      </Badge>
+                    <div className="flex items-center gap-1">
+                      <div className="text-right">
+                        <p className="num text-sm font-semibold">
+                          {brlFromCents(asset.current_cents)}
+                        </p>
+                        <Badge variant={performance >= 0 ? "secondary" : "destructive"}>
+                          {pct(performance, 1)}
+                        </Badge>
+                      </div>
+                      <RecordActions
+                        table="investment_assets"
+                        id={asset.id}
+                        editTitle={`Editar ${asset.name}`}
+                        fields={fields}
+                        values={{ ...asset }}
+                        deleteDescription="O ativo será removido da carteira e dos cálculos de patrimônio. Esta ação não pode ser desfeita."
+                      />
                     </div>
                   </div>
                 );

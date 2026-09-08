@@ -63,11 +63,14 @@ export function useUpdateRow(table: TableName) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, values }: { id: string; values: Record<string, unknown> }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from(table)
         .update(values as never)
-        .eq("id", id);
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Registro não encontrado ou sem permissão para alterar.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [table] });
@@ -81,8 +84,14 @@ export function useDeleteRow(table: TableName) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(table).delete().eq("id", id);
+      const { data, error } = await supabase
+        .from(table)
+        .delete()
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Registro não encontrado ou sem permissão para excluir.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [table] });

@@ -3,12 +3,14 @@ import { CreditCard } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { Tables } from "@/integrations/supabase/types";
 import { useRows } from "@/lib/db";
+import { saoPauloToday } from "@/lib/finance";
 import { brlFromCents } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/cartoes")({
@@ -78,9 +80,45 @@ function Cartoes() {
       name: "payment_account_id",
       label: "Conta para pagamento",
       type: "select",
+      allowEmpty: true,
+      emptyLabel: "Sem conta definida",
       options: (accounts.data ?? [])
         .filter((account) => !account.archived)
         .map((account) => ({ value: account.id, label: account.name })),
+    },
+  ];
+  const installmentFields: Field[] = [
+    {
+      name: "credit_card_id",
+      label: "Cartão",
+      type: "select",
+      required: true,
+      options: (cards.data ?? [])
+        .filter((card) => !card.archived)
+        .map((card) => ({ value: card.id, label: card.name })),
+    },
+    { name: "description", label: "Descrição", type: "text", required: true },
+    { name: "total_cents", label: "Valor total", type: "money", required: true, min: 0 },
+    {
+      name: "installments_total",
+      label: "Total de parcelas",
+      type: "number",
+      required: true,
+      min: 1,
+    },
+    {
+      name: "installments_paid",
+      label: "Parcelas já pagas",
+      type: "number",
+      default: "0",
+      min: 0,
+    },
+    {
+      name: "first_charge_on",
+      label: "Data da primeira parcela",
+      type: "date",
+      required: true,
+      default: saoPauloToday(),
     },
   ];
 
@@ -118,7 +156,10 @@ function Cartoes() {
             const total = invoice(card.id);
             const usage = card.limit_cents > 0 ? (total / card.limit_cents) * 100 : 0;
             return (
-              <Card key={card.id} className="overflow-hidden">
+              <Card
+                key={card.id}
+                className={`overflow-hidden ${card.archived ? "opacity-60" : ""}`}
+              >
                 <CardContent className="space-y-4 p-5">
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                     <div className="min-w-0">
@@ -127,7 +168,17 @@ function Cartoes() {
                         {card.brand || "Bandeira não informada"}
                       </p>
                     </div>
-                    <CreditCard className="h-5 w-5 shrink-0" style={{ color: card.color }} />
+                    <div className="flex items-center">
+                      <CreditCard className="mr-1 h-5 w-5 shrink-0" style={{ color: card.color }} />
+                      <RecordActions
+                        table="credit_cards"
+                        id={card.id}
+                        editTitle={`Editar ${card.name}`}
+                        fields={fields}
+                        values={{ ...card }}
+                        archive={{ archived: card.archived, noun: "cartão" }}
+                      />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs uppercase text-muted-foreground">Fatura do mês</p>
@@ -150,8 +201,14 @@ function Cartoes() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle className="text-base">Compras parceladas</CardTitle>
+          <RecordDialog
+            table="card_installments"
+            title="Nova compra parcelada"
+            fields={installmentFields}
+            label="Nova compra"
+          />
         </CardHeader>
         <CardContent className="divide-y divide-border p-0">
           {(installments.data ?? []).length === 0 ? (
@@ -170,7 +227,7 @@ function Cartoes() {
                     {cardNames.get(item.credit_card_id ?? "") || "Cartão removido"}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex shrink-0 items-center gap-1">
                   <Badge variant="outline">
                     {item.installments_paid}/{item.installments_total}
                   </Badge>
@@ -179,6 +236,14 @@ function Cartoes() {
                       Math.round(item.total_cents / Math.max(item.installments_total, 1)),
                     )}
                   </span>
+                  <RecordActions
+                    table="card_installments"
+                    id={item.id}
+                    editTitle={`Editar ${item.description}`}
+                    fields={installmentFields}
+                    values={{ ...item }}
+                    deleteDescription="O controle desta compra parcelada será excluído. Os lançamentos já registrados não serão removidos."
+                  />
                 </div>
               </div>
             ))

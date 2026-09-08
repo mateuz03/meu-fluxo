@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,15 +171,30 @@ function ConfiguracoesPage() {
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {(categories.data ?? []).map((category) => (
-                <span
+                <div
                   key={category.id}
-                  className="rounded-full border px-3 py-1 text-xs"
+                  className={`flex items-center rounded-full border pl-3 text-xs ${category.archived ? "opacity-55" : ""}`}
                   style={{ borderColor: category.color }}
                 >
                   {category.name} · {category.kind}
-                </span>
+                  <RecordActions
+                    table="categories"
+                    id={category.id}
+                    editTitle={`Editar ${category.name}`}
+                    fields={categoryFields}
+                    values={{ ...category }}
+                    archive={{ archived: category.archived, noun: "categoria" }}
+                  />
+                </div>
               ))}
             </div>
+            {categories.isLoading ? (
+              <p className="text-sm text-muted-foreground">Carregando categorias...</p>
+            ) : categories.isError ? (
+              <p className="text-sm text-destructive">Não foi possível carregar as categorias.</p>
+            ) : (categories.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma categoria cadastrada.</p>
+            ) : null}
             <RecordDialog
               table="categories"
               title="Nova categoria"

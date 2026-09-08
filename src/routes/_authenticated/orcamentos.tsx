@@ -3,6 +3,7 @@ import { AlertTriangle, PiggyBank } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -119,11 +120,21 @@ function Orcamentos() {
                     <p className="truncate font-medium">
                       {categoryById.get(budget.category_id ?? "")?.name || "Categoria removida"}
                     </p>
-                    <span
-                      className={`num text-sm ${over ? "text-destructive" : "text-muted-foreground"}`}
-                    >
-                      {pct(progress)}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`num text-sm ${over ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {pct(progress)}
+                      </span>
+                      <RecordActions
+                        table="budgets"
+                        id={budget.id}
+                        editTitle="Editar orçamento"
+                        fields={fields}
+                        values={{ ...budget }}
+                        deleteDescription="O limite desta categoria será removido somente do mês selecionado. Seus lançamentos não serão alterados."
+                      />
+                    </div>
                   </div>
                   <Progress value={Math.min(progress, 100)} />
                   <p className="num text-sm text-muted-foreground">

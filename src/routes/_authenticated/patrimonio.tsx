@@ -3,6 +3,7 @@ import { Landmark } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,7 +105,17 @@ function PatrimonioPage() {
                     {new Date(`${asset.value_updated_on}T12:00:00`).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
-                <p className="num text-sm font-semibold">{brlFromCents(asset.value_cents)}</p>
+                <div className="flex items-center gap-1">
+                  <p className="num text-sm font-semibold">{brlFromCents(asset.value_cents)}</p>
+                  <RecordActions
+                    table="net_worth_assets"
+                    id={asset.id}
+                    editTitle={`Editar ${asset.name}`}
+                    fields={fields}
+                    values={{ ...asset }}
+                    deleteDescription="O bem será removido do cálculo do patrimônio líquido. Esta ação não pode ser desfeita."
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}

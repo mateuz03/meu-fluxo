@@ -1,5 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Pencil, Wallet } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowUpRight,
+  Pencil,
+  Wallet,
+} from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
@@ -8,12 +16,7 @@ import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -168,6 +171,25 @@ function AccountDialog({
           <Button type="submit" className="w-full gap-1.5" disabled={update.isPending}>
             <Pencil className="h-4 w-4" />
             {update.isPending ? "Salvando..." : "Salvar alterações"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-1.5"
+            disabled={update.isPending}
+            onClick={() =>
+              update.mutate(
+                { id: account.id, values: { archived: !account.archived } },
+                { onSuccess: onClose },
+              )
+            }
+          >
+            {account.archived ? (
+              <ArchiveRestore className="h-4 w-4" />
+            ) : (
+              <Archive className="h-4 w-4" />
+            )}
+            {account.archived ? "Reativar conta" : "Arquivar conta"}
           </Button>
         </form>
 
