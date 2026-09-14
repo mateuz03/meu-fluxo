@@ -6,6 +6,11 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { RecordActions } from "@/components/record-actions";
 import { RecordDialog, type Field } from "@/components/record-dialog";
+import {
+  TransferActions,
+  TransferDialog,
+  type AccountTransfer,
+} from "@/components/transfer-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +25,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tables } from "@/integrations/supabase/types";
 import { useRows } from "@/lib/db";
+import { indexAccountTransferPairs } from "@/lib/finance";
 import { brlFromCents, shortDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/transacoes")({
@@ -52,6 +58,28 @@ function Transacoes() {
     () => new Map((cards.data ?? []).map((card) => [card.id, card.name])),
     [cards.data],
   );
+  const transfers = useMemo(() => {
+    const groups = new Map<string, AccountTransfer>();
+    const rows = transactions.data ?? [];
+    const pairs = indexAccountTransferPairs(rows);
+
+    pairs.forEach(({ source, destination }, groupId) => {
+      if (!source?.account_id || !destination?.account_id) return;
+
+      groups.set(groupId, {
+        groupId,
+        fromAccountId: source.account_id,
+        toAccountId: destination.account_id,
+        amountCents: Math.abs(source.amount_cents),
+        occurredOn: source.occurred_on,
+        description: source.description,
+        status: source.status,
+        ...(source.notes ? { notes: source.notes } : {}),
+      });
+    });
+
+    return groups;
+  }, [transactions.data]);
   const fields: Field[] = [
     {
       name: "description",
@@ -127,8 +155,17 @@ function Transacoes() {
   const lista = useMemo(
     () =>
       (transactions.data ?? []).filter((tx) => {
+        if (
+          tx.type === "transferencia" &&
+          tx.transfer_group_id &&
+          tx.amount_cents > 0 &&
+          transfers.has(tx.transfer_group_id)
+        )
+          return false;
+
+        const transfer = tx.transfer_group_id ? transfers.get(tx.transfer_group_id) : undefined;
         const searchable =
-          `${tx.description} ${categoryNames.get(tx.category_id ?? "") ?? ""} ${accountNames.get(tx.account_id ?? "") ?? ""} ${cardNames.get(tx.credit_card_id ?? "") ?? ""}`.toLowerCase();
+          `${tx.description} ${categoryNames.get(tx.category_id ?? "") ?? ""} ${accountNames.get(tx.account_id ?? "") ?? ""} ${cardNames.get(tx.credit_card_id ?? "") ?? ""} ${accountNames.get(transfer?.toAccountId ?? "") ?? ""}`.toLowerCase();
         return (
           (tipo === "todos" || tx.type === tipo) &&
           (status === "todos" || tx.status === status) &&
@@ -136,7 +173,17 @@ function Transacoes() {
           searchable.includes(busca.toLowerCase())
         );
       }),
-    [transactions.data, tipo, status, month, busca, categoryNames, accountNames, cardNames],
+    [
+      transactions.data,
+      tipo,
+      status,
+      month,
+      busca,
+      categoryNames,
+      accountNames,
+      cardNames,
+      transfers,
+    ],
   );
   const valid = lista.filter((tx) => tx.status !== "cancelado");
   const receitas = valid
@@ -150,14 +197,17 @@ function Transacoes() {
     <div className="space-y-6">
       <PageHeader
         title="Transações"
-        description="Receitas e despesas registradas por você"
+        description="Receitas, despesas e transferências entre suas contas"
         action={
-          <RecordDialog
-            table="transactions"
-            title="Novo lançamento"
-            fields={fields}
-            label="Novo lançamento"
-          />
+          <div className="flex items-center gap-2">
+            <TransferDialog accounts={accounts.data ?? []} />
+            <RecordDialog
+              table="transactions"
+              title="Novo lançamento"
+              fields={fields}
+              label="Novo lançamento"
+            />
+          </div>
         }
       />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -175,6 +225,7 @@ function Transacoes() {
             <TabsTrigger value="todos">Todos</TabsTrigger>
             <TabsTrigger value="receita">Receitas</TabsTrigger>
             <TabsTrigger value="despesa">Despesas</TabsTrigger>
+            <TabsTrigger value="transferencia">Transferências</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -236,54 +287,68 @@ function Transacoes() {
         <EmptyState
           icon={Search}
           title="Nenhum lançamento encontrado"
-          description="Ajuste os filtros ou registre uma receita ou despesa."
+          description="Ajuste os filtros ou registre uma nova movimentação."
         />
       ) : (
         <Card>
           <CardContent className="divide-y divide-border p-0">
-            {lista.map((tx) => (
-              <div
-                key={tx.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3.5 sm:px-5"
-              >
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <p className="truncate text-sm font-medium">{tx.description}</p>
-                    {tx.installment_label ? (
-                      <Badge variant="outline">{tx.installment_label}</Badge>
+            {lista.map((tx) => {
+              const transfer = tx.transfer_group_id
+                ? transfers.get(tx.transfer_group_id)
+                : undefined;
+              return (
+                <div
+                  key={tx.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3.5 sm:px-5"
+                >
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="truncate text-sm font-medium">{tx.description}</p>
+                      {tx.installment_label ? (
+                        <Badge variant="outline">{tx.installment_label}</Badge>
+                      ) : null}
+                    </div>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {shortDate(tx.occurred_on)} ·{" "}
+                      {transfer
+                        ? `${accountNames.get(transfer.fromAccountId) || "Conta removida"} → ${accountNames.get(transfer.toAccountId) || "Conta removida"}`
+                        : `${categoryNames.get(tx.category_id ?? "") || "Sem categoria"} · ${
+                            accountNames.get(tx.account_id ?? "") ||
+                            cardNames.get(tx.credit_card_id ?? "") ||
+                            "Sem conta"
+                          }`}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex flex-col items-end gap-1">
+                      <span
+                        className={`num text-sm font-semibold ${tx.type === "receita" ? "text-success" : tx.type === "despesa" ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {tx.type === "receita" ? "+" : tx.type === "despesa" ? "−" : ""}{" "}
+                        {brlFromCents(
+                          tx.type === "transferencia" ? Math.abs(tx.amount_cents) : tx.amount_cents,
+                        )}
+                      </span>
+                      <Badge variant={tx.status === "pago" ? "secondary" : "outline"}>
+                        {tx.status}
+                      </Badge>
+                    </div>
+                    {transfer ? (
+                      <TransferActions accounts={accounts.data ?? []} transfer={transfer} />
+                    ) : tx.type !== "transferencia" ? (
+                      <RecordActions
+                        table="transactions"
+                        id={tx.id}
+                        editTitle={`Editar ${tx.description}`}
+                        fields={fields}
+                        values={{ ...tx }}
+                        deleteDescription="O lançamento será removido dos saldos, relatórios e orçamentos. Esta ação não pode ser desfeita."
+                      />
                     ) : null}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {shortDate(tx.occurred_on)} ·{" "}
-                    {categoryNames.get(tx.category_id ?? "") || "Sem categoria"} ·{" "}
-                    {accountNames.get(tx.account_id ?? "") ||
-                      cardNames.get(tx.credit_card_id ?? "") ||
-                      "Sem conta"}
-                  </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={`num text-sm font-semibold ${tx.type === "receita" ? "text-success" : tx.type === "despesa" ? "text-destructive" : ""}`}
-                    >
-                      {tx.type === "receita" ? "+" : tx.type === "despesa" ? "−" : ""}{" "}
-                      {brlFromCents(tx.amount_cents)}
-                    </span>
-                    <Badge variant={tx.status === "pago" ? "secondary" : "outline"}>
-                      {tx.status}
-                    </Badge>
-                  </div>
-                  <RecordActions
-                    table="transactions"
-                    id={tx.id}
-                    editTitle={`Editar ${tx.description}`}
-                    fields={fields}
-                    values={{ ...tx }}
-                    deleteDescription="O lançamento será removido dos saldos, relatórios e orçamentos. Esta ação não pode ser desfeita."
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}

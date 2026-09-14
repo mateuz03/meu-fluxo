@@ -5,6 +5,25 @@ export const saoPauloToday = () =>
 
 export const currentMonthKey = () => saoPauloToday().slice(0, 7);
 
+export type AccountTransferPair = {
+  source: Tables<"transactions"> | null;
+  destination: Tables<"transactions"> | null;
+};
+
+export function indexAccountTransferPairs(transactions: Tables<"transactions">[]) {
+  const pairs = new Map<string, AccountTransferPair>();
+
+  transactions.forEach((tx) => {
+    if (tx.type !== "transferencia" || !tx.transfer_group_id) return;
+    const pair = pairs.get(tx.transfer_group_id) ?? { source: null, destination: null };
+    if (tx.amount_cents < 0) pair.source = tx;
+    if (tx.amount_cents > 0) pair.destination = tx;
+    pairs.set(tx.transfer_group_id, pair);
+  });
+
+  return pairs;
+}
+
 export function accountBalanceCents(
   account: Tables<"accounts">,
   transactions: Tables<"transactions">[],
@@ -12,11 +31,11 @@ export function accountBalanceCents(
   return (
     account.opening_balance_cents +
     transactions
-      .filter((tx) => tx.account_id === account.id && tx.status !== "cancelado")
+      .filter((tx) => tx.account_id === account.id && tx.status === "pago")
       .reduce((sum, tx) => {
         if (tx.type === "receita") return sum + tx.amount_cents;
         if (tx.type === "despesa") return sum - tx.amount_cents;
-        return sum;
+        return sum + tx.amount_cents;
       }, 0)
   );
 }

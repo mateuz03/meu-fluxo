@@ -628,7 +628,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cancel_account_transfer: {
+        Args: { p_transfer_group_id: string }
+        Returns: undefined
+      }
+      save_account_transfer: {
+        Args: {
+          p_amount_cents: number
+          p_description: string
+          p_from_account_id: string
+          p_notes: string
+          p_occurred_on: string
+          p_to_account_id: string
+          p_transfer_group_id: string | null
+        }
+        Returns: string
+      }
     }
     Enums: {
       account_type:

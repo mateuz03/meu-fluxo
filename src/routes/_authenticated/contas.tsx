@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { RecordDialog, type Field } from "@/components/record-dialog";
 import { StatCard } from "@/components/stat-card";
+import { TransferDialog } from "@/components/transfer-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import type { Tables } from "@/integrations/supabase/types";
 import { useRows, useUpdateRow } from "@/lib/db";
-import { accountBalanceCents } from "@/lib/finance";
+import { accountBalanceCents, indexAccountTransferPairs } from "@/lib/finance";
 import { brlFromCents, shortDate, toCents } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/contas")({
@@ -78,10 +79,12 @@ const txIcon = {
 
 function AccountDialog({
   account,
+  accounts,
   transactions,
   onClose,
 }: {
   account: Tables<"accounts">;
+  accounts: Tables<"accounts">[];
   transactions: Tables<"transactions">[];
   onClose: () => void;
 }) {
@@ -93,8 +96,10 @@ function AccountDialog({
 
   const balance = accountBalanceCents(account, transactions);
   const statement = transactions
-    .filter((tx) => tx.account_id === account.id && tx.status !== "cancelado")
+    .filter((tx) => tx.account_id === account.id)
     .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
+  const accountNames = new Map(accounts.map((item) => [item.id, item.name]));
+  const transferPairs = indexAccountTransferPairs(transactions);
 
   function save(e: React.FormEvent) {
     e.preventDefault();
@@ -203,8 +208,17 @@ function AccountDialog({
             <ul className="divide-y rounded-xl border">
               {statement.map((tx) => {
                 const Icon = txIcon[tx.type];
+                const pair = tx.transfer_group_id
+                  ? transferPairs.get(tx.transfer_group_id)
+                  : undefined;
+                const counterpart = tx.amount_cents < 0 ? pair?.destination : pair?.source;
                 return (
-                  <li key={tx.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <li
+                    key={tx.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 ${
+                      tx.status === "cancelado" ? "opacity-55" : ""
+                    }`}
+                  >
                     <span
                       className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
                         tx.type === "receita"
@@ -220,7 +234,13 @@ function AccountDialog({
                       <p className="truncate text-sm font-medium">{tx.description}</p>
                       <p className="text-xs text-muted-foreground">
                         {shortDate(tx.occurred_on)}
+                        {tx.type === "transferencia" && counterpart?.account_id
+                          ? ` · ${tx.amount_cents < 0 ? "para" : "de"} ${
+                              accountNames.get(counterpart.account_id) || "Conta removida"
+                            }`
+                          : ""}
                         {tx.status === "pendente" ? " · pendente" : ""}
+                        {tx.status === "cancelado" ? " · cancelada" : ""}
                       </p>
                     </div>
                     <span
@@ -232,8 +252,10 @@ function AccountDialog({
                             : "text-muted-foreground"
                       }`}
                     >
-                      {tx.type === "receita" ? "+" : tx.type === "despesa" ? "-" : ""}
-                      {brlFromCents(tx.amount_cents)}
+                      {tx.type === "receita" || (tx.type === "transferencia" && tx.amount_cents > 0)
+                        ? "+"
+                        : "−"}{" "}
+                      {brlFromCents(Math.abs(tx.amount_cents))}
                     </span>
                   </li>
                 );
@@ -263,12 +285,15 @@ function Contas() {
         title="Contas"
         description="Toque em uma conta para editar e ver o extrato"
         action={
-          <RecordDialog
-            table="accounts"
-            title="Nova conta"
-            fields={accountFields}
-            label="Nova conta"
-          />
+          <div className="flex items-center gap-2">
+            <TransferDialog accounts={rows} />
+            <RecordDialog
+              table="accounts"
+              title="Nova conta"
+              fields={accountFields}
+              label="Nova conta"
+            />
+          </div>
         }
       />
       <StatCard
@@ -331,6 +356,7 @@ function Contas() {
       {selected && (
         <AccountDialog
           account={rows.find((a) => a.id === selected.id) ?? selected}
+          accounts={rows}
           transactions={txs}
           onClose={() => setSelected(null)}
         />

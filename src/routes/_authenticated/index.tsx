@@ -26,6 +26,7 @@ import {
   accountBalanceCents,
   currentMonthKey,
   expensesByCategory,
+  indexAccountTransferPairs,
   monthlyFlow,
 } from "@/lib/finance";
 import { brlFromCents, shortDate } from "@/lib/format";
@@ -73,6 +74,16 @@ function Dashboard() {
     (categories.data ?? []).map((category) => [category.id, category.name]),
   );
   const cardNames = new Map((cards.data ?? []).map((card) => [card.id, card.name]));
+  const transferPairs = indexAccountTransferPairs(txs);
+  const recentTransactions = txs
+    .filter(
+      (tx) =>
+        tx.type !== "transferencia" ||
+        !tx.transfer_group_id ||
+        !transferPairs.get(tx.transfer_group_id)?.source ||
+        transferPairs.get(tx.transfer_group_id)?.source?.id === tx.id,
+    )
+    .slice(0, 6);
   const topGoal = [...(goals.data ?? [])].sort(
     (a, b) =>
       (b.target_cents ? b.current_cents / b.target_cents : 0) -
@@ -222,28 +233,45 @@ function Dashboard() {
                 </Button>
               </CardHeader>
               <CardContent className="divide-y divide-border p-0">
-                {txs.slice(0, 6).map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{tx.description}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {categoryNames.get(tx.category_id ?? "") || "Sem categoria"} ·{" "}
-                        {accountNames.get(tx.account_id ?? "") ||
-                          cardNames.get(tx.credit_card_id ?? "") ||
-                          "Sem conta"}{" "}
-                        · {shortDate(tx.occurred_on)}
-                      </p>
-                    </div>
-                    <span
-                      className={`num shrink-0 text-sm font-semibold ${tx.type === "receita" ? "text-success" : "text-destructive"}`}
+                {recentTransactions.map((tx) => {
+                  const destination = tx.transfer_group_id
+                    ? transferPairs.get(tx.transfer_group_id)?.destination
+                    : undefined;
+                  return (
+                    <div
+                      key={tx.id}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3"
                     >
-                      {tx.type === "receita" ? "+" : "−"} {brlFromCents(tx.amount_cents)}
-                    </span>
-                  </div>
-                ))}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{tx.description}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {tx.type === "transferencia"
+                            ? (accountNames.get(tx.account_id ?? "") || "Conta removida") +
+                              " → " +
+                              (accountNames.get(destination?.account_id ?? "") || "Conta removida")
+                            : (categoryNames.get(tx.category_id ?? "") || "Sem categoria") +
+                              " · " +
+                              (accountNames.get(tx.account_id ?? "") ||
+                                cardNames.get(tx.credit_card_id ?? "") ||
+                                "Sem conta")}{" "}
+                          · {shortDate(tx.occurred_on)}
+                        </p>
+                      </div>
+                      <span
+                        className={`num shrink-0 text-sm font-semibold ${
+                          tx.type === "receita"
+                            ? "text-success"
+                            : tx.type === "despesa"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {tx.type === "receita" ? "+" : tx.type === "despesa" ? "−" : ""}{" "}
+                        {brlFromCents(Math.abs(tx.amount_cents))}
+                      </span>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
             <div className="space-y-4">

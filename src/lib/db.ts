@@ -101,6 +101,58 @@ export function useDeleteRow(table: TableName) {
   });
 }
 
+export type AccountTransferInput = {
+  transferGroupId?: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amountCents: number;
+  occurredOn: string;
+  description: string;
+  notes?: string;
+};
+
+export function useSaveAccountTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: AccountTransferInput) => {
+      const { data, error } = await supabase.rpc("save_account_transfer", {
+        p_transfer_group_id: values.transferGroupId ?? null,
+        p_from_account_id: values.fromAccountId,
+        p_to_account_id: values.toAccountId,
+        p_amount_cents: values.amountCents,
+        p_occurred_on: values.occurredOn,
+        p_description: values.description,
+        p_notes: values.notes ?? "",
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, values) => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success(values.transferGroupId ? "Transferência atualizada" : "Transferência salva");
+    },
+    onError: () =>
+      toast.error("Não foi possível salvar a transferência. Verifique as contas e o valor."),
+  });
+}
+
+export function useCancelAccountTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (transferGroupId: string) => {
+      const { error } = await supabase.rpc("cancel_account_transfer", {
+        p_transfer_group_id: transferGroupId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Transferência cancelada");
+    },
+    onError: () => toast.error("Não foi possível cancelar a transferência."),
+  });
+}
+
 export function useProfile() {
   return useQuery({
     queryKey: ["profile"],
